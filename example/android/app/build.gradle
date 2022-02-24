@@ -204,6 +204,7 @@ dependencies {
         implementation jscFlavor
     }
 
+    // new module react-native-video-picture-in-picture
     implementation project(':reactnativevideopictureinpicture')
 }
 

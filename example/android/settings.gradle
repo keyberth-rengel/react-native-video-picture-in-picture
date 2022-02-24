@@ -2,5 +2,6 @@ rootProject.name = 'VideoPictureInPictureExample'
 apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
 include ':app'
 
+// new module react-native-video-picture-in-picture
 include ':reactnativevideopictureinpicture'
 project(':reactnativevideopictureinpicture').projectDir = new File(rootProject.projectDir, '../../android')
