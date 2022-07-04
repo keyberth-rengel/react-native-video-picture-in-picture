@@ -1,14 +1,7 @@
 /* eslint-disable react-native/no-inline-styles */
-import React from 'react';
+import React, { VideoHTMLAttributes } from 'react';
 
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  useColorScheme,
-  Platform,
-  Dimensions,
-} from 'react-native';
+import { View, useColorScheme, Platform } from 'react-native';
 import Video from 'react-native-video-picture-in-picture';
 
 // // Enter Pip mode
@@ -21,10 +14,8 @@ import Video from 'react-native-video-picture-in-picture';
 // AndroidPip.enableAutoPipSwitch()
 // AndroidPip.disableAutoPipSwitch()
 
-const { width } = Dimensions.get('screen');
-
 export default function App() {
-  let player = React.useRef();
+  const player = React.useRef<VideoHTMLAttributes<Video>>();
   const isDarkMode = useColorScheme() === 'dark';
 
   const onError = () => {};
@@ -50,8 +41,8 @@ export default function App() {
       allowsExternalPlayback
       playInBackground={true}
       // playWhenInactive={true}
+      pictureInPicture={true}
       rate={1.0}
-      // controls
       onLoadStart={() => {
         onLoadStart();
       }}

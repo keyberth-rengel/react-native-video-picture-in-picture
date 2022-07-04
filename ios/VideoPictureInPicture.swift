@@ -1,8 +1,16 @@
+import AVKit
+import UIKit
+
 @objc(VideoPictureInPicture)
 class VideoPictureInPicture: NSObject {
+    let audioSession = AVAudioSession.sharedInstance()
 
-    @objc(multiply:withB:withResolver:withRejecter:)
-    func multiply(a: Float, b: Float, resolve:RCTPromiseResolveBlock,reject:RCTPromiseRejectBlock) -> Void {
-        resolve(a*b)
+    @objc(enterPictureInPictureMode)
+    func enterPictureInPictureMode() {
+         do {
+           try audioSession.setCategory(.playback, mode: .moviePlayback)
+         } catch {
+           print("Failed to set audioSession category to playback")
+         }
     }
 }
