@@ -1,8 +1,9 @@
 /* eslint-disable react-native/no-inline-styles */
-import React, { VideoHTMLAttributes } from 'react';
+import React, { LegacyRef, VideoHTMLAttributes } from 'react';
 
 import { View, useColorScheme, Platform } from 'react-native';
 import Video from 'react-native-video-picture-in-picture';
+import type VideoPlayer from 'react-native-video-picture-in-picture';
 
 // // Enter Pip mode
 // AndroidPip.enterPictureInPictureMode()
@@ -15,7 +16,7 @@ import Video from 'react-native-video-picture-in-picture';
 // AndroidPip.disableAutoPipSwitch()
 
 export default function App() {
-  const player = React.useRef<VideoHTMLAttributes<Video>>();
+  let player = React.useRef<LegacyRef<VideoPlayer> | undefined>();
   const isDarkMode = useColorScheme() === 'dark';
 
   const onError = () => {};
@@ -46,9 +47,7 @@ export default function App() {
       onLoadStart={() => {
         onLoadStart();
       }}
-      ref={(ref) => {
-        player = ref;
-      }}
+      ref={player}
       onError={onError} // Callback when video cannot be loaded
       style={{
         backgroundColor: 'black',

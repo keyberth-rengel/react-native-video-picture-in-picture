@@ -14,6 +14,8 @@ import {
   TouchableOpacity,
   StyleProp,
   PanResponderInstance,
+  NativeModules,
+  Platform,
 } from 'react-native';
 import Video from 'react-native-video';
 import padStart from 'lodash/padStart';
@@ -21,25 +23,33 @@ import padStart from 'lodash/padStart';
 /**
  * error messages
  */
-// const LINKING_ERROR =
-//   `The package 'react-native-video-picture-in-picture' doesn't seem to be linked. Make sure: \n\n` +
-//   Platform.select({ ios: "- You have run 'pod install'\n", default: '' }) +
-//   '- You rebuilt the app after installing the package\n' +
-//   '- You are not using Expo managed workflow\n';
+const LINKING_ERROR =
+  `The package 'react-native-video-picture-in-picture' doesn't seem to be linked. Make sure: \n\n` +
+  Platform.select({ ios: "- You have run 'pod install'\n", default: '' }) +
+  '- You rebuilt the app after installing the package\n' +
+  '- You are not using Expo managed workflow\n';
 
 /**
  * validate modules
  */
-// const VideoPictureInPicture = NativeModules.VideoPictureInPicture
-//   ? NativeModules.VideoPictureInPicture
-//   : new Proxy(
-//     {},
-//     {
-//       get() {
-//         throw new Error(LINKING_ERROR);
-//       },
-//     }
-//   );
+const VideoPictureInPicture = NativeModules.VideoPictureInPicture
+  ? NativeModules.VideoPictureInPicture
+  : new Proxy(
+      {},
+      {
+        get() {
+          throw new Error(LINKING_ERROR);
+        },
+      }
+    );
+
+type SourceType =
+  | {
+      uri?: string | undefined;
+      headers?: { [key: string]: string } | undefined;
+      type?: string | undefined;
+    }
+  | number;
 
 interface VideoPlayerProps {
   paused?: boolean;
@@ -49,7 +59,7 @@ interface VideoPlayerProps {
   title?: string;
   rate?: number;
   isFullScreen?: boolean;
-  resizeMode?: string;
+  resizeMode?: 'stretch' | 'contain' | 'cover' | 'none' | string;
   showTimeRemaining?: boolean;
   showHours?: boolean;
   showOnStart?: boolean;
@@ -75,12 +85,7 @@ interface VideoPlayerProps {
   disableSeekbar?: boolean;
   disablePlayPause?: boolean;
   seekColor?: string;
-  source?:
-    | string
-    | {
-        uri?: string;
-        type?: string;
-      };
+  source?: SourceType;
   allowsExternalPlayback?: boolean;
   pictureInPicture?: boolean;
   // events
@@ -105,7 +110,7 @@ interface VideoPlayerState {
   doubleTapTime: number;
   playInBackground: boolean;
   playWhenInactive: boolean;
-  resizeMode: string;
+  resizeMode: 'stretch' | 'contain' | 'cover' | 'none' | string;
   isFullscreen: boolean;
   showOnStart: boolean;
   paused: boolean;
@@ -159,6 +164,21 @@ export default class VideoPlayer extends Component<
     showHours: false,
     pictureInPictureIcon: true,
     pictureInPictureStart: false,
+    volumeTrackWidth: 0,
+    volumeFillWidth: 0,
+    seekerFillWidth: 0,
+    showControls: false,
+    volumePosition: 0,
+    seekerPosition: 0,
+    volumeOffset: 0,
+    seekerOffset: 0,
+    seeking: false,
+    originallyPaused: false,
+    scrubbing: false,
+    loading: false,
+    currentTime: 0,
+    error: false,
+    duration: 0,
   };
 
   private opts: {
@@ -211,6 +231,43 @@ export default class VideoPlayer extends Component<
   private styles: { containerStyle: any; videoStyle: any };
   private mounted: any;
 
+  state = {
+    showRemainingTime: false,
+    toggleResizeModeOnFullscreen: true,
+    controlAnimationTiming: 500,
+    doubleTapTime: 130,
+    playInBackground: false,
+    playWhenInactive: false,
+    resizeMode: 'contain',
+    isFullscreen: false,
+    showOnStart: true,
+    paused: false,
+    repeat: false,
+    muted: false,
+    volume: 1,
+    title: '',
+    rate: 1,
+    showTimeRemaining: true,
+    showHours: false,
+    pictureInPictureIcon: true,
+    pictureInPictureStart: false,
+    volumeTrackWidth: 0,
+    volumeFillWidth: 0,
+    seekerFillWidth: 0,
+    showControls: false,
+    volumePosition: 0,
+    seekerPosition: 0,
+    volumeOffset: 0,
+    seekerOffset: 0,
+    seeking: false,
+    originallyPaused: false,
+    scrubbing: false,
+    loading: false,
+    currentTime: 0,
+    error: false,
+    duration: 0,
+  };
+
   constructor(props: VideoPlayerProps | Readonly<VideoPlayerProps>) {
     super(props);
 
@@ -218,7 +275,7 @@ export default class VideoPlayer extends Component<
      * All of our values that are updated by the
      * methods and listeners in this class
      */
-    this.state = {
+    this.setState({
       // Video
       resizeMode: this.props?.resizeMode ?? '',
       paused: this.props?.paused ?? false,
@@ -246,7 +303,7 @@ export default class VideoPlayer extends Component<
       error: false,
       duration: 0,
       showRemainingTime: false,
-    };
+    });
 
     /**
      * Any options that can be set at init.
@@ -337,17 +394,6 @@ export default class VideoPlayer extends Component<
     };
   }
 
-  // @ts-ignore
-  componentDidUpdate = (prevProps: { isFullscreen: boolean }) => {
-    const { isFullScreen } = this.props;
-
-    if (prevProps.isFullscreen !== isFullScreen) {
-      // eslint-disable-next-line react/no-did-update-set-state
-      this.setState({
-        isFullscreen: isFullScreen ?? false,
-      });
-    }
-  };
   /**
    | -------------------------------------------------------
    | Events
@@ -1164,21 +1210,14 @@ export default class VideoPlayer extends Component<
           },
         ]}
       >
-        <ImageBackground
-          source={require('./assets/img/top-vignette.png')}
-          style={[styles.controls.column]}
-          imageStyle={[styles.controls.vignette]}
-        >
-          <SafeAreaView style={styles.controls.topControlGroup}>
-            {backControl}
-            <View style={styles.controls.pullRight}>
-              {volumeControl}
-              {fullscreenControl}
-            </View>
-            {this.props.pictureInPictureIcon && pipControl}
-          </SafeAreaView>
-          {!this.props.pictureInPictureIcon && pipControl}
-        </ImageBackground>
+        <SafeAreaView style={styles.controls.topControlGroup}>
+          {backControl}
+          <View style={styles.controls.pullRight}>
+            {volumeControl}
+            {fullscreenControl}
+          </View>
+          {this.props.pictureInPictureIcon && pipControl}
+        </SafeAreaView>
       </Animated.View>
     );
   }
@@ -1202,14 +1241,14 @@ export default class VideoPlayer extends Component<
    */
   renderPip() {
     const pictureInPictureStart = () => {
-      this.events.onScreenTouch();
+      this._onScreenTouch();
 
       setTimeout(() => {
         this.setState({
           ...this.state,
           pictureInPictureStart: true,
         });
-        // VideoPictureInPicture.enterPictureInPictureMode();
+        VideoPictureInPicture.enterPictureInPictureMode();
       }, 500);
     };
 
@@ -1448,6 +1487,7 @@ export default class VideoPlayer extends Component<
    * Provide all of our options and render the whole component.
    */
   render() {
+    // @ts-ignore
     return (
       <TouchableWithoutFeedback
         onPress={this.events.onScreenTouch}
@@ -1590,11 +1630,12 @@ const styles: StyleProp<any> = {
       justifyContent: 'flex-end',
     },
     topControlGroup: {
-      alignSelf: 'stretch',
+      display: 'flex',
+      // alignSelf: 'stretch',
       alignItems: 'center',
       justifyContent: 'space-between',
       flexDirection: 'row',
-      width: 0,
+      // width: 0,
       margin: 12,
       marginBottom: 0,
     },
